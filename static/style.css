@@ -1,0 +1,80 @@
+/* Reset & Base Styling */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Segoe UI', Roboto, sans-serif;
+    background: #f7f9fc;
+    color: #333;
+    line-height: 1.6;
+}
+
+/* Main Container */
+.container {
+    max-width: 900px;
+    margin: 50px auto;
+    background: #fff;
+    padding: 40px;
+    border-radius: 12px;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.05);
+    text-align: center;
+}
+
+/* Headline */
+h1 {
+    font-size: 32px;
+    color: #222;
+    margin-bottom: 25px;
+    font-weight: 600;
+}
+
+/* File Upload */
+input[type="file"] {
+    padding: 12px;
+    border: 2px solid #ccc;
+    border-radius: 6px;
+    margin-top: 20px;
+    width: 60%;
+    max-width: 400px;
+}
+
+/* Button Styling */
+button {
+    margin-top: 20px;
+    padding: 12px 30px;
+    background: #007bff;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-size: 16px;
+    cursor: pointer;
+    transition: background 0.3s ease;
+}
+
+button:hover {
+    background: #0056b3;
+}
+
+/* Result Section */
+.result {
+    margin-top: 30px;
+    padding: 15px;
+    border: 1px solid #007bff;
+    background: #e9f2ff;
+    border-radius: 8px;
+    font-size: 18px;
+    font-weight: 500;
+}
+
+/* Uploaded Image */
+img.uploaded-img {
+    margin-top: 25px;
+    max-width: 100%;
+    height: auto;
+    border-radius: 8px;
+    border: 1px solid #ccc;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
