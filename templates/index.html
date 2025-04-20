@@ -2,37 +2,263 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Grayscale Temperature Viewer</title>
-  <style>
-    img { max-width: 100%; cursor: crosshair; }
-    #info { margin-top: 10px; font-size: 1.2rem; }
-  </style>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Thermal Image Analyzer</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
-  <h2>Grayscale Temperature Viewer</h2>
-  <img id="image" src="{{ url_for('static', filename='gray8-grayscale.jpg') }}">
-  <div id="info">Hover over the image to see temperature.</div>
+  <div class="container">
+    <h1>Thermal Image Analyzer</h1>
+
+    <!-- Flash messages -->
+    {% with messages = get_flashed_messages() %}
+      {% if messages %}
+        <div class="flash-messages">
+          {% for message in messages %}
+            <div class="flash-message">{{ message }}</div>
+          {% endfor %}
+        </div>
+      {% endif %}
+    {% endwith %}
+
+    <div class="layout">
+      <div class="sidebar">
+        <div class="upload-section">
+          <h2>Upload Image</h2>
+          <form action="/upload" method="post" enctype="multipart/form-data" id="upload-form">
+            <div class="file-input-container">
+              <input type="file" name="file" id="file-input" accept=".jpg,.jpeg,.png,.tif,.tiff">
+              <label for="file-input" class="file-input-label">
+                <span id="file-name">Choose file</span>
+              </label>
+            </div>
+            <button type="submit" class="btn upload-btn">Upload Image</button>
+          </form>
+          <div class="upload-info">
+            <p>Upload a grayscale image to analyze temperature data.</p>
+            <p>Supported formats: JPEG, PNG, TIFF</p>
+          </div>
+        </div>
+
+        <div class="uploaded-images">
+          <h2>Available Images</h2>
+          <div id="image-list">
+            <div class="image-thumbnail demo-thumbnail">
+              <img src="{{ url_for('static', filename='demo/gray8-grayscale.jpg') }}" alt="Demo Image">
+              <div class="image-name">Demo Image</div>
+              <form action="/switch_to_demo" method="post">
+                <button type="submit" class="btn small-btn">Select</button>
+              </form>
+            </div>
+            <!-- Other uploaded images will be dynamically added here -->
+          </div>
+        </div>
+
+        <div class="info-card">
+          <h2>Temperature Analysis</h2>
+          <div id="info">Hover over the image to see temperature values</div>
+          <div id="raw-value" class="raw-value"></div>
+        </div>
+
+        <div class="controls">
+          <button id="toggle-unit" class="btn">Switch to °C/°F</button>
+          <button id="reset-view" class="btn">Reset View</button>
+        </div>
+      </div>
+
+      <div class="main-content">
+        <div class="active-image-info">
+          <h2>Active Image: <span id="active-image-name">
+            {% if active_image_id == "demo" %}
+              Demo Image
+            {% else %}
+              Uploaded Image
+            {% endif %}
+          </span></h2>
+        </div>
+        
+        <div class="image-container">
+          <img id="image" src="{{ active_image_path }}" alt="Thermal Image">
+          <div id="crosshair"></div>
+          <div id="coordinates" class="coordinate-display"></div>
+        </div>
+        
+        <div class="temperature-scale">
+          <span class="scale-label">Cold</span>
+          <div class="scale-gradient"></div>
+          <span class="scale-label">Hot</span>
+        </div>
+        
+        <div class="image-details">
+          <p>Click on the image to toggle between Celsius and Fahrenheit</p>
+          <p>Image dimensions: <span id="image-dimensions">Loading...</span></p>
+        </div>
+      </div>
+    </div>
+
+    <footer>
+      <p>Thermal Image Analyzer &copy; 2025</p>
+    </footer>
+  </div>
+
   <script>
     const img = document.getElementById('image');
     const info = document.getElementById('info');
+    const rawValue = document.getElementById('raw-value');
+    const crosshair = document.getElementById('crosshair');
+    const coordinates = document.getElementById('coordinates');
+    const infoCard = document.querySelector('.info-card');
+    const toggleBtn = document.getElementById('toggle-unit');
+    const resetBtn = document.getElementById('reset-view');
+    const fileInput = document.getElementById('file-input');
+    const fileName = document.getElementById('file-name');
+    const activeImageName = document.getElementById('active-image-name');
+    const imageDimensions = document.getElementById('image-dimensions');
+    const imageList = document.getElementById('image-list');
+    
+    // Update filename display when file selected
+    fileInput.addEventListener('change', () => {
+      if (fileInput.files.length > 0) {
+        fileName.textContent = fileInput.files[0].name;
+      } else {
+        fileName.textContent = 'Choose file';
+      }
+    });
 
+    // Initialize with active image
+    let activeImageId = "{{ active_image_id }}";
+    
+    // Load image dimensions after image loads
+    img.onload = function() {
+      imageDimensions.textContent = `${this.naturalWidth} × ${this.naturalHeight} px`;
+    };
+    
+    // Load all uploaded images
+    const loadUploadedImages = async () => {
+      try {
+        const res = await fetch('/get_uploaded_images');
+        const data = await res.json();
+        
+        // Clear existing thumbnails except demo
+        const thumbnails = imageList.querySelectorAll('.image-thumbnail:not(.demo-thumbnail)');
+        thumbnails.forEach(thumbnail => thumbnail.remove());
+        
+        // Add uploaded images
+        data.images.forEach(image => {
+          if (image.id !== "demo") {
+            const thumbnail = document.createElement('div');
+            thumbnail.className = 'image-thumbnail';
+            if (image.id === activeImageId) {
+              thumbnail.classList.add('active');
+            }
+            
+            thumbnail.innerHTML = `
+              <img src="${image.path}" alt="${image.filename}">
+              <div class="image-name">${image.filename}</div>
+              <form action="/switch_to_image/${image.id}" method="post">
+                <button type="submit" class="btn small-btn">Select</button>
+              </form>
+            `;
+            
+            imageList.appendChild(thumbnail);
+          }
+        });
+        
+        // Mark demo as active if it's the current image
+        const demoThumbnail = document.querySelector('.demo-thumbnail');
+        if (activeImageId === "demo") {
+          demoThumbnail.classList.add('active');
+        } else {
+          demoThumbnail.classList.remove('active');
+        }
+        
+      } catch (error) {
+        console.error("Error fetching uploaded images:", error);
+      }
+    };
+    
+    // Show crosshair when hovering over image
     img.addEventListener('mousemove', async (e) => {
       const rect = img.getBoundingClientRect();
       const x = Math.floor((e.clientX - rect.left) * img.naturalWidth / img.width);
       const y = Math.floor((e.clientY - rect.top) * img.naturalHeight / img.height);
-
+      
+      // Position crosshair
+      crosshair.style.display = 'block';
+      crosshair.style.left = e.clientX + 'px';
+      crosshair.style.top = e.clientY + 'px';
+      
+      // Show coordinates
+      coordinates.style.display = 'block';
+      coordinates.textContent = `x: ${x}, y: ${y}`;
+      
+      // Get temperature data
       const res = await fetch('/get_temp', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({x, y})
+        body: JSON.stringify({x, y, image_id: activeImageId})
       });
+      
       const data = await res.json();
-      info.innerText = `Temp at (${x}, ${y}): ${data.temperature}`;
+      info.textContent = `Temperature: ${data.temperature}`;
+      if (data.raw_value) {
+        rawValue.textContent = `Raw pixel value: ${data.raw_value}`;
+      }
+      
+      // Add animation effect
+      infoCard.classList.add('temp-update');
+      setTimeout(() => {
+        infoCard.classList.remove('temp-update');
+      }, 500);
     });
-
+    
+    // Hide crosshair when not hovering over image
+    img.addEventListener('mouseout', () => {
+      crosshair.style.display = 'none';
+      coordinates.style.display = 'none';
+    });
+    
+    // Toggle temperature unit on image click
     img.addEventListener('click', async () => {
-      await fetch('/toggle_unit', { method: 'POST' });
+      await toggleTemperatureUnit();
     });
+    
+    // Toggle temperature unit
+    toggleBtn.addEventListener('click', async () => {
+      await toggleTemperatureUnit();
+    });
+    
+    async function toggleTemperatureUnit() {
+      const res = await fetch('/toggle_unit', { method: 'POST' });
+      const data = await res.json();
+      
+      toggleBtn.textContent = `Switch to ${data.unit === "Fahrenheit" ? "°C" : "°F"}`;
+      toggleBtn.classList.add('temp-update');
+      setTimeout(() => {
+        toggleBtn.classList.remove('temp-update');
+      }, 500);
+    }
+    
+    // Reset view (refresh the page)
+    resetBtn.addEventListener('click', () => {
+      location.reload();
+    });
+    
+    // Initialize
+    document.addEventListener('DOMContentLoaded', () => {
+      loadUploadedImages();
+    });
+    
+    // Auto-dismiss flash messages after 5 seconds
+    setTimeout(() => {
+      const flashMessages = document.querySelectorAll('.flash-message');
+      flashMessages.forEach(message => {
+        message.style.opacity = '0';
+        setTimeout(() => {
+          message.remove();
+        }, 500);
+      });
+    }, 5000);
   </script>
 </body>
 </html>
