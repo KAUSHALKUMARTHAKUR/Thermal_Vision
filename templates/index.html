@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Grayscale Temperature Viewer</title>
+  <style>
+    img { max-width: 100%; cursor: crosshair; }
+    #info { margin-top: 10px; font-size: 1.2rem; }
+  </style>
+</head>
+<body>
+  <h2>Grayscale Temperature Viewer</h2>
+  <img id="image" src="{{ url_for('static', filename='gray8-grayscale.jpg') }}">
+  <div id="info">Hover over the image to see temperature.</div>
+  <script>
+    const img = document.getElementById('image');
+    const info = document.getElementById('info');
+
+    img.addEventListener('mousemove', async (e) => {
+      const rect = img.getBoundingClientRect();
+      const x = Math.floor((e.clientX - rect.left) * img.naturalWidth / img.width);
+      const y = Math.floor((e.clientY - rect.top) * img.naturalHeight / img.height);
+
+      const res = await fetch('/get_temp', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({x, y})
+      });
+      const data = await res.json();
+      info.innerText = `Temp at (${x}, ${y}): ${data.temperature}`;
+    });
+
+    img.addEventListener('click', async () => {
+      await fetch('/toggle_unit', { method: 'POST' });
+    });
+  </script>
+</body>
+</html>
