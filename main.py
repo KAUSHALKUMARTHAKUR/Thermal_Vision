@@ -33,7 +33,7 @@ def mouse_event(event, x, y, flags, param):
         
         is_fahrenheit = not is_fahrenheit
 
-gray16_image = cv2.imread(r"C:\Users\kaush\Downloads\Project1\gray8-grayscale.jpg", cv2.IMREAD_ANYDEPTH)
+gray16_image = cv2.imread("gray8-grayscale.jpg", cv2.IMREAD_ANYDEPTH)
 
 gray8_image = np.zeros(gray16_image.shape, dtype=np.uint8)
 gray8_image = cv2.normalize(gray16_image, gray8_image, 0, 255, cv2.NORM_MINMAX)
